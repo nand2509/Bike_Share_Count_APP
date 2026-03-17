@@ -3,7 +3,8 @@ import pickle
 import numpy as np
 
 # Load model
-model = pickle.load(open('model.pkl', 'rb'))
+import os
+model = pickle.load(open(os.path.join(os.path.dirname(__file__), 'model.pkl'), 'rb'))
 
 # Weekday mapping (0=Sun, 1=Mon, ..., 6=Sat based on sklearn get_dummies)
 weekday_dict = {
