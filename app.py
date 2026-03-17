@@ -1,74 +1,48 @@
-from flask import Flask, request, url_for, redirect, render_template, jsonify
-import pandas as pd
+import streamlit as st
 import pickle
 import numpy as np
 
-app = Flask(__name__)
-
+# Load model
 model = pickle.load(open('model.pkl', 'rb'))
 
-day_dict = {'Fri': [1, 0, 0, 0, 0, 0, 0], 'Mon': [0, 1, 0, 0, 0, 0, 0],
-            'Sat': [0, 0, 1, 0, 0, 0, 0], 'Sun': [0, 0, 0, 1, 0, 0, 0],
-            'Thu': [0, 0, 0, 0, 1, 0, 0], 'Tue': [0, 0, 0, 0, 0, 1, 0],
-            'Wed': [0, 0, 0, 0, 0, 0, 1]}
+# Weekday mapping (0=Sun, 1=Mon, ..., 6=Sat based on sklearn get_dummies)
+weekday_dict = {
+    'Sun': [1, 0, 0, 0, 0, 0, 0],
+    'Mon': [0, 1, 0, 0, 0, 0, 0],
+    'Tue': [0, 0, 1, 0, 0, 0, 0],
+    'Wed': [0, 0, 0, 1, 0, 0, 0],
+    'Thu': [0, 0, 0, 0, 1, 0, 0],
+    'Fri': [0, 0, 0, 0, 0, 1, 0],
+    'Sat': [0, 0, 0, 0, 0, 0, 1]
+}
 
+st.set_page_config(page_title="Bike Share Predictor", page_icon="🚴")
 
-# cols = ['hour', 'is_holiday', 'day_of_week']
+st.title("🚴 Bike Share Count Predictor")
+st.markdown("Predict the number of bike rides based on time and day.")
 
-@app.route('/')
-def home():
-    return render_template("index.html")
+# Inputs
+hour = st.selectbox("🕐 Select Hour (0-23)", list(range(24)))
+is_holiday = st.selectbox("🎉 Is it a Holiday?", ["No", "Yes"])
+day_of_week = st.selectbox("📅 Select Day", ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"])
 
-
-@app.route('/predict', methods=['POST', 'GET'])
-def predict():
-    item = [x for x in request.form.values()]
-
-    ## postman begin
-    # hour = request.args.get('hour')
-    # is_holiday = request.args.get('is_holiday')
-    # day_of_week = request.args.get('day_of_week')
-
-    # data = []
-
-    # data.append(hour)
-    # if is_holiday == 'Yes':
-    #    data.extend([0,1])
-    # else:
-    #    data.extend([1,0])
-    #
-    # data.extend(day_dict[day_of_week])
-
-    ### postman end
-
+if st.button("🔍 Predict Bike Count"):
     data = []
 
-    # As  The training data was dumm ified one, so we have to pass the
-    # test data in the same format ('hour','is_holiday','day_of_week')
+    # hour
+    data.append(int(hour))
 
-    data.append(int(item[0]))
-
-    # is holiday
-    if item[1] == 'Yes':
-        data.extend([0, 1])
+    # is_holiday (get_dummies: is_holiday_0 = not holiday, is_holiday_1 = holiday)
+    if is_holiday == "Yes":
+        data.extend([0, 1])  # is_holiday_0=0, is_holiday_1=1
     else:
-        data.extend([1, 0])
+        data.extend([1, 0])  # is_holiday_0=1, is_holiday_1=0
 
-    # fri, mon, sat , sun, thu, tue, wed
-    data.extend(day_dict[item[2]])
+    # weekday_0 to weekday_6
+    data.extend(weekday_dict[day_of_week])
 
     prediction = int(model.predict([data])[0])
 
-    # postman begin
-
-    # return 'the predicted total bike count :' + str(prediction)
-
-    # postman end
-
-    return render_template('index.html',
-                           pred='Total Bike ride counts on {} at {}:00 Hrs will be {}'.format(item[2], item[0],
-                                                                                              prediction))
-
-
-# if __name__ == '__main__':
-#    app.run(host="0.0.0.0", port=config.PORT, debug=config.DEBUG_MODE)
+    st.success(
+        f"🚲 Predicted bike rides on **{day_of_week}** at **{hour}:00 Hrs** = **{prediction}**"
+    )
